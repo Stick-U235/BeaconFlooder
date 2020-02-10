@@ -34,7 +34,7 @@ int main(int argc, char *argv[]) {
     char *ssid = NULL;
     int c;
     uint8_t channel;
-    unsigned int count=0;
+    unsigned int count = 0;
     int ssidAdded;
 
     lorcon_driver_t *drvlist, *driver;
@@ -44,29 +44,17 @@ int main(int argc, char *argv[]) {
 
     //Beacon frame setup
 
-    // BSSID and source MAC address
     uint8_t *mac = "\x00\xDE\xAD\xBE\xEF\x00";
 
-    // Timestamp
     struct timeval time;
     uint64_t timestamp;
 
-    // Supported Rates (6,9,12,18,24,36,48,54)
+    //(6,9,12,18,24,36,48,54)
     uint8_t rates[] = "\x8c\x12\x98\x24\xb0\x48\x60\x6c";
-
-    // * Beacon Interval
     int interval = 1;
-
-    // Capabilities
     int capabilities = 0x0421;
 
-
-        printf ("%s - Simple 802.11 Beacon Flooder\n", argv[0]);
-        printf ("-----------------------------------------------------\n\n");
-
-        /*
-                This handles all of the command line arguments
-        */
+    //This handles all of the command line arguments
 
         while ((c = getopt(argc, argv, "i:s:hc:")) != EOF) {
                 switch (c) {
@@ -77,7 +65,7 @@ int main(int argc, char *argv[]) {
                                 if ( strlen(strdup(optarg)) < 255 ) {
                                         ssid = strdup(optarg);
                                 } else {
-                                        printf("ERROR: SSID Length too long! Should not exceed 255 characters\n");
+                                        printf("ERROR: SSID Length > 255 characters\n");
                                         return -1;
                                 }
                                 break;
@@ -100,12 +88,9 @@ int main(int argc, char *argv[]) {
 
         printf("[+] Using interface %s\n",interface);
 
-        /*
-                The following is all of the standard interface, driver, and context setup
-        */
+        //Interface, driver and Lorcon setup:
 
         // Automatically determine the driver of the interface
-
         if ( (driver = lorcon_auto_driver(interface)) == NULL) {
                 printf("[!] Could not determine the driver for %s\n",interface);
                 return -1;
@@ -113,15 +98,14 @@ int main(int argc, char *argv[]) {
                 printf("[+]\t Driver: %s\n",driver->name);
         }
 
-        // Create LORCON context
+        // Create LORCON context and Monitor Mode Interface
         if ((context = lorcon_create(interface, driver)) == NULL) {
                 printf("[!]\t Failed to create context");
                 return -1;
         }
 
-        // Create Monitor Mode Interface
         if (lorcon_open_injmon(context) < 0) {
-                printf("[!]\t Could not create Monitor Mode interface!\n");
+                printf("[!]\t Could not create Monitor Mode interface\n");
                 return -1;
         } else {
                 printf("[+]\t Monitor Mode VAP: %s\n",lorcon_get_vap(context));
@@ -146,7 +130,7 @@ int main(int argc, char *argv[]) {
                 // Initialize the LORCON metapack
                 metapack = lcpa_init();
 
-                // Create a Beacon frame from 00:DE:AD:BE:EF:00
+                // Create a Beacon frame 
                 lcpf_beacon(metapack, mac, mac, 0x00, 0x00, 0x00, 0x00, timestamp, interval, capabilities);
 
                 // Append IE Tag 0 for SSID
@@ -159,18 +143,15 @@ int main(int argc, char *argv[]) {
                 if ( lorcon_inject(context,txpack) < 0 )
                         return -1;
                
-                //Increment a value in SSID
+                //Increment and add value at the end of the SSID
                 ssidAdded++; 
                 ssid[ssidLength]=ssidAdded;
 
                 usleep(interval * 1000); //*
 
-              // Print nice and pretty
-                printf("\033[K\r");
                 printf("[+] Sent %d frames\n", count);
                 fflush(stdout);
                 count++;
-
 
                 lcpa_free(metapack);
         }
