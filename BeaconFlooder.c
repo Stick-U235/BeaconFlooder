@@ -45,8 +45,6 @@ int main(int argc, char *argv[]) {
     lcpa_metapack_t *metapack;
     lorcon_packet_t *txpack;
 
-    //Beacon frame setup
-
     uint8_t *mac = "\x00\xDE\xAD\xBE\xEF\x00";
     struct timeval time;
     uint64_t timestamp;
@@ -88,19 +86,18 @@ int main(int argc, char *argv[]) {
         }
 
         if ( interface == NULL || ssid == NULL ) {
-                printf ("ERROR: Interface (-i), channel (-c), or SSID (-s) not set.\n");
+                printf ("Error: Interface (-i), channel (-c), or SSID (-s) not set.\n");
                 return -1;
         }
-
+        
         printf("[+] Using interface %s\n",interface);
-
-        //Interface, driver and Lorcon setup:
 
         // Automatically determine the driver of the interface
         if ( (driver = lorcon_auto_driver(interface)) == NULL) {
                 printf("[!] Could not determine the driver for %s\n",interface);
                 return -1;
-        } else {
+        } 
+        else {
                 printf("[+]\t Driver: %s\n",driver->name);
         }
 
@@ -113,7 +110,8 @@ int main(int argc, char *argv[]) {
         if (lorcon_open_injmon(context) < 0) {
                 printf("[!]\t Could not create Monitor Mode interface\n");
                 return -1;
-        } else {
+        } 
+        else {
                 printf("[+]\t Monitor Mode VAP: %s\n",lorcon_get_vap(context));
                 lorcon_free_driver_list(driver);
         }
