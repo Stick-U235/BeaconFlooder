@@ -1,19 +1,17 @@
 /*
  *
+ 
 ===
-
 usage-
 to compile:
 gcc -o BeaconFlooder -lorcon2 BeaconFlooder.c
 
 Put your alpha card in monitor mode, and run:
-sudo airmon-ng start wls160u4u1
-sudo ./beacon_flood_lcpa -s [SSID_HERE] -i wls160u4u1mon -c 11
+sudo ./BeaconFlooder -s [SSID_HERE] -i wls160u4u1mon -c 11
 ===
 
-This is a modified version of a Lorcon example written by
+This was built off of a Lorcon useage example written by
 brad.antoniewicz@foundstone.com
-
 */
 
 #include <stdlib.h>
