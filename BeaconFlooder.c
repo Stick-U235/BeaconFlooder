@@ -2,15 +2,16 @@
  *
  
 ===
-usage-
-to compile:
+Depends on Lorcon2.
+Arch: sudo pacman -S lorcon2
+
+To compile:
 gcc -o BeaconFlooder -lorcon2 BeaconFlooder.c
+Put your alpha card in monitor mode, then run:
+sudo ./BeaconFlooder -s [SSID_HERE] -i [interface] -c [channel]
 
-Put your alpha card in monitor mode, and run:
-sudo ./BeaconFlooder -s [SSID_HERE] -i wls160u4u1mon -c 11
 ===
-
-This was built off of a Lorcon useage example written by
+The base of this is from a Lorcon useage example written by
 brad.antoniewicz@foundstone.com
 */
 
